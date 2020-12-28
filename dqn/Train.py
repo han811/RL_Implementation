@@ -12,27 +12,23 @@ from Preprocessing import preprocess
 from Config import config
 
 class DQN_train:
-    def __init__(self, config, name='Breakout-v0'):
+    def __init__(self, config):
         self.Model = DQN()
         self.Preprocess = preprocess
         self.ReplayMemory = ReplayMemory(config)   
-        self.Env = gym.make(name)
+        self.Env = gym.make(config['env_name'],frameskip=4)
         self.Env.render()
-        self.Current = None
-        self.Steps = 0
         self.eps = 1.0
-        self.Optim = tf.keras.optimizers.Adam(learning_rate=0.01)
-        
-        self.tmp = np.empty((84,84,4), dtype=np.float32)
-        
+        self.Current = 0
+        self.Optim = tf.keras.optimizers.Adam(learning_rate=0.00025, clipnorm=1.0)
+        self.discount_factor = config['discount_factor']
+
     def reset(self):
-        self.Current = None
-        self.Steps = 0
-        self.ReplayMemory.reset()
         self.Env.reset()
         self.Env.render()
 
-    def policy(self, inputs, k=4):
+    def policy(self, inputs):
+        inputs = inputs / 255.
         actions = self.Model.predict(inputs)
         action = actions.argmax()
         # print(actions)
@@ -44,22 +40,14 @@ class DQN_train:
             a.remove(action)
             action = random.choice(a)
         
-        for _ in range(k):
-            obs, reward, done, info = self.Env.step(action)
-            if reward>0:
-                reward = 1
-            elif reward<0:
-                reward = -1
-            else:
-                reward = 0
-            self.Env.render()
-            self.Steps += 1
-            self.Steps = self.Steps % self.ReplayMemory.MemorySize    
-            obs = preprocess(obs,(84,84))
-            self.tmp[...,0:3] = self.tmp[...,1:4]
-            self.tmp[...,3:4] = obs.copy()
-            self.Current = self.tmp.copy()
-            self.ReplayMemory.add(self.Current, obs, action, reward, done)
+        obs, reward, done, info = self.Env.step(action)
+        self.Env.render()
+        obs = preprocess(obs)
+        self.ReplayMemory.add(obs, action, reward, done)
+        self.Current += 1
+        self.Current = self.Current % self.ReplayMemory.MemorySize
+            
+
         return obs, reward, done, info
         
     def train(self, mini_batch=32, k=4, episode=1000000):
@@ -76,15 +64,11 @@ class DQN_train:
             for i in range(4):
                 action = self.Env.action_space.sample()
                 obs, reward, done, info = self.Env.step(action)
-                if reward>0:
-                    reward = 1
-                elif reward<0:
-                    reward = -1
-                else:
-                    reward = 0
                 self.Env.render()
-                obs = preprocess(obs,(84,84))
-                self.tmp[...,i:i+1] = obs.copy()
+                obs = preprocess(obs)
+                self.ReplayMemory.add(obs, action, reward, done)
+                self.Current += 1
+                self.Current = self.Current % self.ReplayMemory.MemorySize
                 if done:
                     sig = False
             # print(self.tmp.shape)
@@ -92,42 +76,40 @@ class DQN_train:
             if sig == False:
                 self.reset()
                 continue
-            self.Current = self.tmp.copy()
-            self.ReplayMemory.add(self.Current, obs, action, reward, done)
             
-            while(True):
-                s , _ , _ , _ = self.ReplayMemory.getState(self.Steps)
+            c_l = 0
+            while True:
+                s , _ , _ , _ = self.ReplayMemory.getState(self.Current)
                 # print(s.shape)
                 # exit()
-                obs, reward, done, info = self.policy(s,k)
+                obs, reward, done, info = self.policy(s)
                 if done:
                     break
                 
-                inputs = []
+                s1 , a , r , s2 , _ = self.ReplayMemory.getStateMiniBatch(32)
                 y = []
                 A = []
-                
-                for i in range(mini_batch):
-                    idx = random.randint(0,self.Steps)
-                    s1 , a , _ , _ = self.ReplayMemory.getState(idx-1)
-                    s2 , _ , r , _ = self.ReplayMemory.getState(idx)
-                    if i == 0:
-                        inputs = s1.copy()
-                    else:
-                        inputs = np.concatenate((inputs, s1.copy()), axis=0)
+                for i in range(32):
                     aidx = [False,False,False,False]
-                    aidx[a] = True
+                    aidx[a[i]] = True
                     A.append(aidx.copy())
-                    
-                    actions = self.Model.predict(s2)
-                    action = tf.argmax(actions, 0).numpy()[0]
-                    # print(actions)
-                    y.append(r + actions[0][action])
+                # t1 = time.time()
+                
+                actions = self.Model.predict(s2/255.)
+                # t2 = time.time()
+                # print(t2-t1)
+                for i in range(32):
+                    action = actions[i].argmax()
+                    # print(action)
+                    # print(actions[i])
+                    y.append(r[i] + self.discount_factor * actions[i][action])
                 # print(len(inputs))
                 # print(inputs[0].shape)
                 # exit()
-                loss = self.update(inputs, y, A, mini_batch)
-                print(f"loss: {loss}")
+                loss = self.update(s1/255., y, A, mini_batch)
+                if c_l % 100 == 0:
+                    print(f"loss: {loss}")
+                c_l+=1
 
     # @tf.function
     def update(self, inputs, y, A, mini_batch=32):
@@ -153,5 +135,4 @@ if __name__ == "__main__":
     # print(e.action_space.n)
     # print(preprocess(e.observation_space.high,(84,84)).shape)
     agent = DQN_train(config)
-    # print(agent.Env.reward_range)
     agent.train()
