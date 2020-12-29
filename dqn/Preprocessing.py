@@ -8,10 +8,10 @@ from matplotlib import pyplot as plt
 
 from Utils import rgb2gray
 
-def preprocess(image, dims=(84,110), debug=False):
+def preprocess(image, dims=(84,84), debug=False):
     image = rgb2gray(image)
     image = image.astype(np.uint8)
-    image = cv2.resize(image, dsize=dims, interpolation=cv2.INTER_CUBIC)
+    image = cv2.resize(image, dsize=(84,110), interpolation=cv2.INTER_CUBIC)
     image = image[20:20+dims[0],...]
     if debug:
         # plt.imshow(np.reshape(image,(84,84)))
