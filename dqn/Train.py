@@ -120,7 +120,7 @@ class DQN_train:
             h = np.reshape([h], (1,84,84,4))
 
             while not done:
-                env.render()
+                # env.render()
                 total_steps += 1
                 step += 1
 

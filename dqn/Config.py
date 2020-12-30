@@ -13,7 +13,7 @@ config = dict()
 config['env_name'] = 'BreakoutDeterministic-v4'
 
 # memory size
-config['memory_size'] = 10000
+config['memory_size'] = 100000
 
 # image size
 config['height'] = 84
@@ -42,11 +42,11 @@ config['mini_batch_size'] = 32
 config['history_length'] = 4
 
 # target model update frequency
-config['target_model_update_freq'] = 10000
+config['target_model_update_freq'] = 1000
 
 # learning rate
 config['learning_rate'] = 0.0001
 
 # start learning step
-config['start_learning_step'] = 5000
+config['start_learning_step'] = 25000
 
