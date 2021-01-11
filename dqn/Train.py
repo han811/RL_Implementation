@@ -21,8 +21,8 @@ class DQN_train:
 
         self.Eps = 1.0
         self.EpsStart = 1.0
-        self.EpsEnd = 0.1
-        self.EpsSteps = 1000000
+        self.EpsEnd = 0.02
+        self.EpsSteps = 400000
         self.EpsDecayRate = (self.EpsStart - self.EpsEnd) / self.EpsSteps
         self.BatchSize = config['mini_batch_size']
         self.StartLearningStep = config['start_learning_step']
@@ -120,7 +120,7 @@ class DQN_train:
             h = np.reshape([h], (1,84,84,4))
 
             while not done:
-                # env.render()
+                env.render()
                 total_steps += 1
                 step += 1
 
@@ -179,8 +179,9 @@ class DQN_train:
 
                         self.AvgQMax, self.AvgLoss = 0, 0
 
-                    if e % 1000 == 0:
-                        self.Model.save_weights("./save_model/model", save_format="tf")
+            if e % 1000 == 0:
+                print("save model!!")
+                self.TargetModel.save_weights("./save_model/model2", save_format="tf")
 
 
 

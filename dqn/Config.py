@@ -42,7 +42,7 @@ config['mini_batch_size'] = 32
 config['history_length'] = 4
 
 # target model update frequency
-config['target_model_update_freq'] = 1000
+config['target_model_update_freq'] = 400
 
 # learning rate
 config['learning_rate'] = 0.0001
