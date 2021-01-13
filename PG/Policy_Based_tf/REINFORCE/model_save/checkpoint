@@ -1,0 +1,2 @@
+model_checkpoint_path: "Discrete_REINFORCE_CartPole-v0_Score_189.6"
+all_model_checkpoint_paths: "Discrete_REINFORCE_CartPole-v0_Score_189.6"
